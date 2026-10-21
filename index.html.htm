@@ -1,0 +1,4568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TPEG Training Dashboard</title>
+  <style>
+    :root {
+      --bg-main: #f4f6f8;
+      --card-bg: #ffffff;
+      --border-color: #e2e8f0;
+      --header-bg: #0f172a;
+      --text-dark: #1e293b;
+      --text-muted: #64748b;
+      --status-red-bg: #fee2e2;
+      --status-red-text: #dc2626;
+      --status-green-bg: #dcfce7;
+      --status-green-text: #16a34a;
+      --status-amber-bg: #fef3c7;
+      --status-amber-text: #d97706;
+      --btn-active: #0f172a;
+      --btn-active-text: #ffffff;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-dark);
+    }
+
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    /* KPI Summary Cards */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .kpi-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .kpi-val { font-size: 2.25rem; font-weight: 700; line-height: 1; margin-top: 0.5rem; }
+
+    /* Filter Controls & Button Groups */
+    .filter-bar {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .filter-row {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filter-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .filter-group label { font-size: 0.85rem; font-weight: 600; }
+    select, input {
+      padding: 0.4rem 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 0.875rem;
+      outline: none;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      padding: 0.4rem 0.85rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      background: #f8fafc;
+      color: var(--text-dark);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .filter-btn:hover { background: #e2e8f0; }
+    .filter-btn.active {
+      background: var(--btn-active);
+      color: var(--btn-active-text);
+      border-color: var(--btn-active);
+    }
+    .hint-text {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-style: italic;
+      margin-top: 0.2rem;
+    }
+
+    /* Table Panels Grid */
+    .tables-grid {
+      display: grid;
+      grid-template-columns: 8fr 4fr;
+      gap: 1.5rem;
+    }
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .panel-header {
+      background: var(--header-bg);
+      color: #fff;
+      padding: 0.85rem 1.25rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .panel-body { padding: 1rem; }
+
+    .search-box {
+      width: 100%;
+      margin-bottom: 1rem;
+    }
+
+    /* Data Tables */
+    .table-container { overflow-x: auto; max-height: 550px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    th, td { padding: 0.6rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+    th { background: #f8fafc; font-weight: 600; position: sticky; top: 0; z-index: 2; }
+
+    /* Excel Status Badges */
+    .badge {
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 0.75rem;
+      display: inline-block;
+      text-align: center;
+    }
+    .badge-over { background: var(--status-red-bg); color: var(--status-red-text); }
+    .badge-under { background: var(--status-green-bg); color: var(--status-green-text); }
+    .badge-balanced { background: var(--status-amber-bg); color: var(--status-amber-text); }
+  </style>
+</head>
+<body>
+
+  <div class="dashboard-header">
+    <h1 style="margin:0; font-size: 1.75rem;">TPEG Training Dashboard</h1>
+    <span style="color: var(--status-green-text); font-weight: 600;">● Local Storage Mode (Offline)</span>
+  </div>
+
+  <!-- Summary KPI Cards -->
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div>
+        <div style="color: var(--text-muted); font-size: 0.8rem; font-weight: 600;">TOTAL STAFF</div>
+        <div class="kpi-val" id="kpiTotal">0</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div>
+        <div style="color: var(--status-amber-text); font-size: 0.8rem; font-weight: 600;">FLEX STAFF</div>
+        <div class="kpi-val" id="kpiFlex" style="color: var(--status-amber-text);">0</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div>
+        <div style="color: var(--status-green-text); font-size: 0.8rem; font-weight: 600;">PERM STAFF</div>
+        <div class="kpi-val" id="kpiPerm" style="color: var(--status-green-text);">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slicer Filters -->
+  <div class="filter-bar">
+    <div class="filter-row">
+      <div class="filter-group">
+        <label for="filterTM">1. Select Training Manager (TM):</label>
+        <select id="filterTM" onchange="onTMChange()">
+          <option value="ALL">All TMs</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Ratio Status (Flex) [Multi-Select]:</label>
+        <div class="button-group" id="statusButtonGroup">
+          <button type="button" class="filter-btn" data-value="Over-Ratio" onclick="toggleButton(this)">Over-Ratio</button>
+          <button type="button" class="filter-btn" data-value="Under-Ratio" onclick="toggleButton(this)">Under-Ratio</button>
+          <button type="button" class="filter-btn" data-value="Balanced" onclick="toggleButton(this)">Balanced</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-group" id="amContainer">
+      <label>2. Select Assistant Manager (ATM) [Multi-Select]:</label>
+      <div id="amHint" class="hint-text">Please select a Training Manager above to view available Assistant Managers.</div>
+      <div class="button-group" id="amButtonGroup"></div>
+    </div>
+  </div>
+
+  <!-- Main Tables Layout -->
+  <div class="tables-grid">
+    <!-- Projects Overview Panel -->
+    <div class="panel">
+      <div class="panel-header">TPEG – PROJECTS' RATIOS OVERVIEW</div>
+      <div class="panel-body">
+        <input type="text" id="projectSearch" class="search-box" placeholder="Search project..." oninput="processAndRender()">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Project</th>
+                <th>HC</th>
+                <th>Trainer HC</th>
+                <th>Flex</th>
+                <th>Ratio (Incl. Flex)</th>
+                <th>Perm Ratio</th>
+                <th>Contract Ratio</th>
+                <th>Status (Flex)</th>
+                <th>Over-Ratio #</th>
+                <th>Status (W/O Flex)</th>
+                <th>Over-Ratio #2</th>
+              </tr>
+            </thead>
+            <tbody id="projectsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trainers Roster Panel -->
+    <div class="panel">
+      <div class="panel-header">TPEG – TRAINERS OVERVIEW</div>
+      <div class="panel-body">
+        <!-- New Flex/Perm Status Multi-Select Filter -->
+        <div class="filter-group" style="margin-bottom: 1rem;">
+          <label>Filter Trainer Status [Multi-Select]:</label>
+          <div class="button-group" id="trainerStatusButtonGroup">
+            <button type="button" class="filter-btn" data-value="Flex" onclick="toggleButton(this)">Flex</button>
+            <button type="button" class="filter-btn" data-value="Perm" onclick="toggleButton(this)">Perm</button>
+          </div>
+        </div>
+
+        <input type="text" id="trainerSearch" class="search-box" placeholder="Search trainer..." oninput="processAndRender()">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Ident</th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Project Name</th>
+              </tr>
+            </thead>
+            <tbody id="trainersTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMBEDDED LOCAL JSON DATA ENGINE -->
+  <script id="dashboard-data" type="application/json">
+  {
+    "projects": [
+      {
+    "Project": "​​The National Telecom Regulatory Authority (NTRA)",
+    "HC": "399",
+    "Trainer HC": "4",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "99.8",
+    "Perm Staff Ratio": "99.8",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-1.3",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-1.3"
+  },
+  {
+    "Project": "Abdul Latif Jameel",
+    "HC": "115",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "AC",
+    "HC": "766",
+    "Trainer HC": "13",
+    "Flex ": "2",
+    "Ratio (Including Flex)": "58.9",
+    "Perm Staff Ratio": "69.6",
+    "Contractual Ratio": "50",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-2.3",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-4.3"
+  },
+  {
+    "Project": "Agilent",
+    "HC": "11",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "AGTHIA GROUP",
+    "HC": "23",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Al Nahdi",
+    "HC": "211",
+    "Trainer HC": "2",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "105.5",
+    "Perm Staff Ratio": "105.5",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-0.8",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-0.8"
+  },
+  {
+    "Project": "AlHokair",
+    "HC": "22",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Al-Majed Oud",
+    "HC": "5",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Amazon",
+    "HC": "2356",
+    "Trainer HC": "16",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "147.3",
+    "Perm Staff Ratio": "147.3",
+    "Contractual Ratio": "100",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-7.6",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-7.6"
+  },
+  {
+    "Project": "Amazon Twitch",
+    "HC": "278",
+    "Trainer HC": "3",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "92.7",
+    "Perm Staff Ratio": "92.7",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-0.7",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-0.7"
+  },
+  {
+    "Project": "ASOS",
+    "HC": "2",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "120",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Astra Zeneca",
+    "HC": "4",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "AT&T",
+    "HC": "232",
+    "Trainer HC": "6",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "38.7",
+    "Perm Staff Ratio": "38.7",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Over-Ratio",
+    "Over-Ratio #": "2.9",
+    "Status (Without Flex)": "Over-Ratio",
+    "Over-Ratio #2": "2.9"
+  },
+  {
+    "Project": "AT&T Broadband",
+    "HC": "316",
+    "Trainer HC": "5",
+    "Flex ": "2",
+    "Ratio (Including Flex)": "63.2",
+    "Perm Staff Ratio": "105.3",
+    "Contractual Ratio": "70",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.5",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-1.5"
+  },
+  {
+    "Project": "AT&T Fiber",
+    "HC": "383",
+    "Trainer HC": "3",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "127.7",
+    "Perm Staff Ratio": "127.7",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-2.1",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-2.1"
+  },
+  {
+    "Project": "Blizzard Entertainment",
+    "HC": "76",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "76.0",
+    "Perm Staff Ratio": "76.0",
+    "Contractual Ratio": "50",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-0.5",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-0.5"
+  },
+  {
+    "Project": "Booking.com",
+    "HC": "1267",
+    "Trainer HC": "14",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "90.5",
+    "Perm Staff Ratio": "90.5",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-2.9",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-2.9"
+  },
+  {
+    "Project": "BSH Bosch und Siemens",
+    "HC": "21",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "50",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Cambridge Box Hill Language Assessment",
+    "HC": "11",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Careem",
+    "HC": "178",
+    "Trainer HC": "3",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "59.3",
+    "Perm Staff Ratio": "59.3",
+    "Contractual Ratio": "100",
+    "Status (Including Flex)": "Over-Ratio",
+    "Over-Ratio #": "1.2",
+    "Status (Without Flex)": "Over-Ratio",
+    "Over-Ratio #2": "1.2"
+  },
+  {
+    "Project": "Choice Hotels",
+    "HC": "10",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Cleopatra hospitals group",
+    "HC": "169",
+    "Trainer HC": "2",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "84.5",
+    "Perm Staff Ratio": "84.5",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-0.3",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-0.3"
+  },
+  {
+    "Project": "CloudKitchens Group",
+    "HC": "4",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Comcast",
+    "HC": "1317",
+    "Trainer HC": "28",
+    "Flex ": "13",
+    "Ratio (Including Flex)": "47.0",
+    "Perm Staff Ratio": "87.8",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Over-Ratio",
+    "Over-Ratio #": "10.4",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-2.6"
+  },
+  {
+    "Project": "Condor Flugdienst GmbH",
+    "HC": "81",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "81.0",
+    "Perm Staff Ratio": "81.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-0.1",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-0.1"
+  },
+  {
+    "Project": "Credit Agricole",
+    "HC": "28",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Cricket",
+    "HC": "176",
+    "Trainer HC": "2",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "88.0",
+    "Perm Staff Ratio": "88.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-0.3",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-0.3"
+  },
+  {
+    "Project": "Danone",
+    "HC": "2",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "DeFacto",
+    "HC": "8",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Dish Network L.L.C.",
+    "HC": "161",
+    "Trainer HC": "3",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "53.7",
+    "Perm Staff Ratio": "53.7",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.9",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.9"
+  },
+  {
+    "Project": "DishTV",
+    "HC": "84",
+    "Trainer HC": "2",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "42.0",
+    "Perm Staff Ratio": "42.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.9",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.9"
+  },
+  {
+    "Project": "Dreame",
+    "HC": "137",
+    "Trainer HC": "2",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "68.5",
+    "Perm Staff Ratio": "68.5",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.2",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.2"
+  },
+  {
+    "Project": "Dubai Airport Company",
+    "HC": "38",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "40",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Ebay",
+    "HC": "325",
+    "Trainer HC": "7",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "46.4",
+    "Perm Staff Ratio": "46.4",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Over-Ratio",
+    "Over-Ratio #": "2.7",
+    "Status (Without Flex)": "Over-Ratio",
+    "Over-Ratio #2": "2.7"
+  },
+  {
+    "Project": "Etihad",
+    "HC": "497",
+    "Trainer HC": "11",
+    "Flex ": "5",
+    "Ratio (Including Flex)": "45.2",
+    "Perm Staff Ratio": "82.8",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Over-Ratio",
+    "Over-Ratio #": "4.4",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-0.6"
+  },
+  {
+    "Project": "Evolve Vacation Rental Network",
+    "HC": "163",
+    "Trainer HC": "3",
+    "Flex ": "1",
+    "Ratio (Including Flex)": "54.3",
+    "Perm Staff Ratio": "81.5",
+    "Contractual Ratio": "100",
+    "Status (Including Flex)": "Over-Ratio",
+    "Over-Ratio #": "1.4",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.4"
+  },
+  {
+    "Project": "Expedia",
+    "HC": "768",
+    "Trainer HC": "12",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "64.0",
+    "Perm Staff Ratio": "64.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Over-Ratio",
+    "Over-Ratio #": "1.8",
+    "Status (Without Flex)": "Over-Ratio",
+    "Over-Ratio #2": "1.8"
+  },
+  {
+    "Project": "Facebook",
+    "HC": "219",
+    "Trainer HC": "3",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "73.0",
+    "Perm Staff Ratio": "73.0",
+    "Contractual Ratio": "50",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-1.4",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-1.4"
+  },
+  {
+    "Project": "FedEx",
+    "HC": "402",
+    "Trainer HC": "7",
+    "Flex ": "3",
+    "Ratio (Including Flex)": "57.4",
+    "Perm Staff Ratio": "100.5",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Over-Ratio",
+    "Over-Ratio #": "1.6",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-1.4"
+  },
+  {
+    "Project": "Freedom Mobile",
+    "HC": "645",
+    "Trainer HC": "5",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "129.0",
+    "Perm Staff Ratio": "129.0",
+    "Contractual Ratio": "70",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-4.2",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-4.2"
+  },
+  {
+    "Project": "GEMMA",
+    "HC": "2",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Groupe SEB",
+    "HC": "7",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Haleon",
+    "HC": "20",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Honor",
+    "HC": "39",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "39.0",
+    "Perm Staff Ratio": "39.0",
+    "Contractual Ratio": "30",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-0.3",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-0.3"
+  },
+  {
+    "Project": "Hungerstation",
+    "HC": "299",
+    "Trainer HC": "4",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "74.8",
+    "Perm Staff Ratio": "74.8",
+    "Contractual Ratio": "70",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-0.3",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-0.3"
+  },
+  {
+    "Project": "IHG - InterContinental Hotels Group",
+    "HC": "240",
+    "Trainer HC": "4",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "60.0",
+    "Perm Staff Ratio": "60.0",
+    "Contractual Ratio": "50",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-0.8",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-0.8"
+  },
+  {
+    "Project": "Isoft",
+    "HC": "4",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "JustMop",
+    "HC": "65",
+    "Trainer HC": "2",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "32.5",
+    "Perm Staff Ratio": "32.5",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Over-Ratio",
+    "Over-Ratio #": "1.1",
+    "Status (Without Flex)": "Over-Ratio",
+    "Over-Ratio #2": "1.1"
+  },
+  {
+    "Project": "Landmark Group",
+    "HC": "65",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "65.0",
+    "Perm Staff Ratio": "65.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.1",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.1"
+  },
+  {
+    "Project": "LanguageLine Solutions",
+    "HC": "203",
+    "Trainer HC": "2",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "101.5",
+    "Perm Staff Ratio": "101.5",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-0.7",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-0.7"
+  },
+  {
+    "Project": "Lenovo",
+    "HC": "39",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "39.0",
+    "Perm Staff Ratio": "39.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.5",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.5"
+  },
+  {
+    "Project": "L'oreal",
+    "HC": "7",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "7.0",
+    "Perm Staff Ratio": "7.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.9",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.9"
+  },
+  {
+    "Project": "Lufthansa AG",
+    "HC": "203",
+    "Trainer HC": "2",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "101.5",
+    "Perm Staff Ratio": "101.5",
+    "Contractual Ratio": "50",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-2.1",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-2.1"
+  },
+  {
+    "Project": "Mantrac",
+    "HC": "6",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "MeiTuan",
+    "HC": "159",
+    "Trainer HC": "4",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "39.8",
+    "Perm Staff Ratio": "39.8",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Over-Ratio",
+    "Over-Ratio #": "1.9",
+    "Status (Without Flex)": "Over-Ratio",
+    "Over-Ratio #2": "1.9"
+  },
+  {
+    "Project": "Microsoft",
+    "HC": "343",
+    "Trainer HC": "8",
+    "Flex ": "1",
+    "Ratio (Including Flex)": "42.9",
+    "Perm Staff Ratio": "49.0",
+    "Contractual Ratio": "40",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-0.6",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-1.6"
+  },
+  {
+    "Project": "National Bank of Egypt",
+    "HC": "2794",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Netflix",
+    "HC": "132",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "132.0",
+    "Perm Staff Ratio": "132.0",
+    "Contractual Ratio": "100",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-0.3",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-0.3"
+  },
+  {
+    "Project": "Nielsen",
+    "HC": "5",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "ON AG",
+    "HC": "140",
+    "Trainer HC": "2",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "70.0",
+    "Perm Staff Ratio": "70.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.1",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.1"
+  },
+  {
+    "Project": "OSL Retail Services",
+    "HC": "9",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Personalshop",
+    "HC": "64",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Philip Morris",
+    "HC": "93",
+    "Trainer HC": "2",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "46.5",
+    "Perm Staff Ratio": "46.5",
+    "Contractual Ratio": "50",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.1",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.1"
+  },
+  {
+    "Project": "Preply",
+    "HC": "19",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Prezzee",
+    "HC": "8",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "100",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Procter & Gamble",
+    "HC": "11",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Proctor Financial",
+    "HC": "337",
+    "Trainer HC": "6",
+    "Flex ": "1",
+    "Ratio (Including Flex)": "56.2",
+    "Perm Staff Ratio": "67.4",
+    "Contractual Ratio": "100",
+    "Status (Including Flex)": "Over-Ratio",
+    "Over-Ratio #": "2.6",
+    "Status (Without Flex)": "Over-Ratio",
+    "Over-Ratio #2": "1.6"
+  },
+  {
+    "Project": "Ras Al Khaimah Economic Zone",
+    "HC": "78",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "78.0",
+    "Perm Staff Ratio": "78.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "0.0",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "0.0"
+  },
+  {
+    "Project": "Ring Amazon",
+    "HC": "89",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "89.0",
+    "Perm Staff Ratio": "89.0",
+    "Contractual Ratio": "100",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.1",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.1"
+  },
+  {
+    "Project": "Riverty",
+    "HC": "111",
+    "Trainer HC": "2",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "55.5",
+    "Perm Staff Ratio": "55.5",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.5",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.5"
+  },
+  {
+    "Project": "Riyadh Air",
+    "HC": "112",
+    "Trainer HC": "3",
+    "Flex ": "1",
+    "Ratio (Including Flex)": "37.3",
+    "Perm Staff Ratio": "56.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Over-Ratio",
+    "Over-Ratio #": "1.5",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.5"
+  },
+  {
+    "Project": "Samsung Egypt",
+    "HC": "168",
+    "Trainer HC": "3",
+    "Flex ": "1",
+    "Ratio (Including Flex)": "56.0",
+    "Perm Staff Ratio": "84.0",
+    "Contractual Ratio": "70",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.6",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-0.4"
+  },
+  {
+    "Project": "Samsung Electronics America",
+    "HC": "211",
+    "Trainer HC": "15",
+    "Flex ": "8",
+    "Ratio (Including Flex)": "14.1",
+    "Perm Staff Ratio": "30.1",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Over-Ratio",
+    "Over-Ratio #": "12.2",
+    "Status (Without Flex)": "Over-Ratio",
+    "Over-Ratio #2": "4.2"
+  },
+  {
+    "Project": "Samsung Electronics MENA",
+    "HC": "97",
+    "Trainer HC": "2",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "48.5",
+    "Perm Staff Ratio": "48.5",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.7",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.7"
+  },
+  {
+    "Project": "Scene+",
+    "HC": "93",
+    "Trainer HC": "2",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "46.5",
+    "Perm Staff Ratio": "46.5",
+    "Contractual Ratio": "50",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.1",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.1"
+  },
+  {
+    "Project": "Seagate",
+    "HC": "31",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "31.0",
+    "Perm Staff Ratio": "31.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.6",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.6"
+  },
+  {
+    "Project": "Seres Auto",
+    "HC": "6",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Shein",
+    "HC": "72",
+    "Trainer HC": "3",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "24.0",
+    "Perm Staff Ratio": "24.0",
+    "Contractual Ratio": "30",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.6",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.6"
+  },
+  {
+    "Project": "Sohoula",
+    "HC": "28",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Somabay",
+    "HC": "5",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Stanley Black & Decker",
+    "HC": "3",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Starlink",
+    "HC": "171",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "171.0",
+    "Perm Staff Ratio": "171.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-1.3",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-1.3"
+  },
+  {
+    "Project": "SumUp Payments Ltd",
+    "HC": "118",
+    "Trainer HC": "2",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "59.0",
+    "Perm Staff Ratio": "59.0",
+    "Contractual Ratio": "60",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.0",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.0"
+  },
+  {
+    "Project": "Talabat",
+    "HC": "461",
+    "Trainer HC": "12",
+    "Flex ": "2",
+    "Ratio (Including Flex)": "38.4",
+    "Perm Staff Ratio": "46.1",
+    "Contractual Ratio": "90",
+    "Status (Including Flex)": "Over-Ratio",
+    "Over-Ratio #": "6.9",
+    "Status (Without Flex)": "Over-Ratio",
+    "Over-Ratio #2": "4.9"
+  },
+  {
+    "Project": "Teleperformance Clients",
+    "HC": "3",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Teleperformance Egypt",
+    "HC": "873",
+    "Trainer HC": "3",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "291.0",
+    "Perm Staff Ratio": "291.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-8.6",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-8.6"
+  },
+  {
+    "Project": "Temu",
+    "HC": "234",
+    "Trainer HC": "6",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "39.0",
+    "Perm Staff Ratio": "39.0",
+    "Contractual Ratio": "45",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.8",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.8"
+  },
+  {
+    "Project": "The first Group",
+    "HC": "25",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "25.0",
+    "Perm Staff Ratio": "25.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.7",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.7"
+  },
+  {
+    "Project": "The Go Daddy Group, Inc.",
+    "HC": "10",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "The Lucky App",
+    "HC": "20",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "TLS Contact",
+    "HC": "86",
+    "Trainer HC": "2",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "43.0",
+    "Perm Staff Ratio": "43.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.9",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.9"
+  },
+  {
+    "Project": "T-Mobile",
+    "HC": "100",
+    "Trainer HC": "3",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "33.3",
+    "Perm Staff Ratio": "33.3",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Over-Ratio",
+    "Over-Ratio #": "1.7",
+    "Status (Without Flex)": "Over-Ratio",
+    "Over-Ratio #2": "1.7"
+  },
+  {
+    "Project": "ToYou",
+    "HC": "14",
+    "Trainer HC": "2",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "7.0",
+    "Perm Staff Ratio": "7.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Over-Ratio",
+    "Over-Ratio #": "1.8",
+    "Status (Without Flex)": "Over-Ratio",
+    "Over-Ratio #2": "1.8"
+  },
+  {
+    "Project": "TrainPal",
+    "HC": "25",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Transmed",
+    "HC": "10",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "TRAVIX",
+    "HC": "7",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "7.0",
+    "Perm Staff Ratio": "7.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.9",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.9"
+  },
+  {
+    "Project": "Trendyol",
+    "HC": "54",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "TruDoc",
+    "HC": "55",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "55.0",
+    "Perm Staff Ratio": "55.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.3",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.3"
+  },
+  {
+    "Project": "TUI Travel",
+    "HC": "147",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "147.0",
+    "Perm Staff Ratio": "147.0",
+    "Contractual Ratio": "50",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-1.9",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-1.9"
+  },
+  {
+    "Project": "Uber",
+    "HC": "1586",
+    "Trainer HC": "16",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "99.1",
+    "Perm Staff Ratio": "99.1",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-5.1",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-5.1"
+  },
+  {
+    "Project": "UPS",
+    "HC": "130",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Verizon Wireless",
+    "HC": "13",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "100",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "VINTED",
+    "HC": "1335",
+    "Trainer HC": "36",
+    "Flex ": "13",
+    "Ratio (Including Flex)": "37.1",
+    "Perm Staff Ratio": "58.0",
+    "Contractual Ratio": "50",
+    "Status (Including Flex)": "Over-Ratio",
+    "Over-Ratio #": "9.3",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-3.7"
+  },
+  {
+    "Project": "Western Union",
+    "HC": "259",
+    "Trainer HC": "3",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "86.3",
+    "Perm Staff Ratio": "86.3",
+    "Contractual Ratio": "60",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-1.3",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-1.3"
+  },
+  {
+    "Project": "Wyndham",
+    "HC": "102",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "102.0",
+    "Perm Staff Ratio": "102.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Under-Ratio",
+    "Over-Ratio #": "-0.4",
+    "Status (Without Flex)": "Under-Ratio",
+    "Over-Ratio #2": "-0.4"
+  },
+  {
+    "Project": "Xiaomi",
+    "HC": "37",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "37.0",
+    "Perm Staff Ratio": "37.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.5",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.5"
+  },
+  {
+    "Project": "Zalando Customer Care International SE & Co. KG",
+    "HC": "7",
+    "Trainer HC": "",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "",
+    "Perm Staff Ratio": "",
+    "Contractual Ratio": "50",
+    "Status (Including Flex)": "",
+    "Over-Ratio #": "",
+    "Status (Without Flex)": "",
+    "Over-Ratio #2": ""
+  },
+  {
+    "Project": "Samsung Electronics Gulf",
+    "HC": "73",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "73.0",
+    "Perm Staff Ratio": "73.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.0",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.0"
+  },
+  {
+    "Project": "Valu",
+    "HC": "70",
+    "Trainer HC": "1",
+    "Flex ": "0",
+    "Ratio (Including Flex)": "70.0",
+    "Perm Staff Ratio": "70.0",
+    "Contractual Ratio": "75",
+    "Status (Including Flex)": "Balanced",
+    "Over-Ratio #": "0.1",
+    "Status (Without Flex)": "Balanced",
+    "Over-Ratio #2": "0.1"
+  }
+    ],
+    "trainers": [
+      {
+    "Ident": "5764681",
+    "Trainer Name": "Salma Ayman Ibrahim",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4956342",
+    "Trainer Name": "Mayar Hany Abdelhalim",
+    "Status ": "Perm",
+    "Project": "Hungerstation",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4979839",
+    "Trainer Name": "Mostafa Elsayed Mohamed Ibrahim",
+    "Status ": "Perm",
+    "Project": "ON AG",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5764015",
+    "Trainer Name": "Dina Atef Ibrahim",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5510744",
+    "Trainer Name": "Mohamed Magdy Abdelrhman",
+    "Status ": "Perm",
+    "Project": "Uber",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5204552",
+    "Trainer Name": "Marcos Odalis Salazar",
+    "Status ": "Perm",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5617862",
+    "Trainer Name": "Merna Onci William Ibrahim",
+    "Status ": "Perm",
+    "Project": "Shein",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "6097377",
+    "Trainer Name": "Salsabil Mohamed Hamed Abdelkader",
+    "Status ": "Flex",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5481145",
+    "Trainer Name": "Ziad Amr Sayed",
+    "Status ": "Perm",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4843092",
+    "Trainer Name": "Rawan Mohamed Abdelfattah",
+    "Status ": "Perm",
+    "Project": "Etihad",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5455994",
+    "Trainer Name": "Omnia Abdallah Mahmoud",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5513246",
+    "Trainer Name": "Sara Kamal Abbas Aly",
+    "Status ": "Perm",
+    "Project": "Amazon",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5949521",
+    "Trainer Name": "Feras Walid Mahmoud",
+    "Status ": "Flex",
+    "Project": "Evolve Vacation Rental Network",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "3905506",
+    "Trainer Name": "Abdelaziz Khaled Ahmed",
+    "Status ": "Perm",
+    "Project": "Careem",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5782156",
+    "Trainer Name": "Ahmed Khaled Fathy Hemida",
+    "Status ": "Flex",
+    "Project": "Etihad",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5764051",
+    "Trainer Name": "Rowan Alaa Soliman",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5239816",
+    "Trainer Name": "Nehal Anwar Hussein",
+    "Status ": "Perm",
+    "Project": "Hungerstation",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4163136",
+    "Trainer Name": "Noureldin Amr Mohamed",
+    "Status ": "Flex",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5814073",
+    "Trainer Name": "Ahmed Mostafa Haider Mohamed",
+    "Status ": "Perm",
+    "Project": "Proctor Financial",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5130810",
+    "Trainer Name": "Viola Ayman Nabil",
+    "Status ": "Perm",
+    "Project": "Expedia",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4894147",
+    "Trainer Name": "Eatimad Ahmed Osami",
+    "Status ": "Flex",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5546631",
+    "Trainer Name": "Nadeen Aboelazm",
+    "Status ": "Perm",
+    "Project": "Booking.com",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5850752",
+    "Trainer Name": "Ahmed Yousry Attallah",
+    "Status ": "Perm",
+    "Project": "Booking.com",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5694531",
+    "Trainer Name": "Aya Ahmed Mohamed Elsayed",
+    "Status ": "Flex",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4642006",
+    "Trainer Name": "Ahmed Ehab Khalil",
+    "Status ": "Perm",
+    "Project": "AT&T",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4773925",
+    "Trainer Name": "Hesham Atef Abdelfattah",
+    "Status ": "Perm",
+    "Project": "Freedom Mobile",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5549850",
+    "Trainer Name": "Sandy Mahmoud Abdelghany",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5512322",
+    "Trainer Name": "Nrmeen Mtaa",
+    "Status ": "Perm",
+    "Project": "Amazon",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4966817",
+    "Trainer Name": "Omar Ibrahim Sayed",
+    "Status ": "Perm",
+    "Project": "Lenovo",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5666455",
+    "Trainer Name": "Reem Emad Fathy",
+    "Status ": "Perm",
+    "Project": "T-Mobile",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5184348",
+    "Trainer Name": "Farah Ahmed Kamal",
+    "Status ": "Perm",
+    "Project": "AC",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "6170817",
+    "Trainer Name": "Nayera Khaled Saadawy",
+    "Status ": "Flex",
+    "Project": "FedEx",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5686602",
+    "Trainer Name": "Hana Ahmed Diab",
+    "Status ": "Perm",
+    "Project": "AC",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4298455",
+    "Trainer Name": "Farah Sobhy Abdelaaty",
+    "Status ": "Perm",
+    "Project": "Expedia",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5628558",
+    "Trainer Name": "Aliaa ali mohamed",
+    "Status ": "Perm",
+    "Project": "Amazon Twitch",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5629567",
+    "Trainer Name": "Moamen Elsayed Bakry Abdallah",
+    "Status ": "Perm",
+    "Project": "Amazon Twitch",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5197302",
+    "Trainer Name": "Mamoudou Camara",
+    "Status ": "Perm",
+    "Project": "AC",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5015299",
+    "Trainer Name": "Seif Abuelyazid Fouad",
+    "Status ": "Perm",
+    "Project": "Philip Morris",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "3421673",
+    "Trainer Name": "Sherine Sayed Ibrahim",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5195988",
+    "Trainer Name": "Hezame Naser Hakmi",
+    "Status ": "Perm",
+    "Project": "Ebay",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "6110660",
+    "Trainer Name": "Mahinour Tharwat Talaat",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4729981",
+    "Trainer Name": "Mariam Mohamed Ali",
+    "Status ": "Perm",
+    "Project": "AC",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5505086",
+    "Trainer Name": "Noran El-sayed",
+    "Status ": "Perm",
+    "Project": "Booking.com",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5505440",
+    "Trainer Name": "Dalia Mohamed Khaled",
+    "Status ": "Perm",
+    "Project": "Uber",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4241662",
+    "Trainer Name": "Mostafa Ahmed Abdo",
+    "Status ": "Perm",
+    "Project": "Samsung Electronics America",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5653087",
+    "Trainer Name": "Gannah Khaled Abdelmoez",
+    "Status ": "Perm",
+    "Project": "Uber",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "3879960",
+    "Trainer Name": "Sara Abdelmoez Youssef",
+    "Status ": "Perm",
+    "Project": "Proctor Financial",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5612382",
+    "Trainer Name": "Abdelaziz Wael Bashir",
+    "Status ": "Perm",
+    "Project": "Temu",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5922264",
+    "Trainer Name": "Abdalla Abdelaziz Samir",
+    "Status ": "Perm",
+    "Project": "Booking.com",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5513266",
+    "Trainer Name": "Honaïda Ahmed",
+    "Status ": "Perm",
+    "Project": "Amazon",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5551779",
+    "Trainer Name": "Ahmed Ayman Fathy",
+    "Status ": "Flex",
+    "Project": "Samsung Electronics America",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "3295371",
+    "Trainer Name": "Alaa Nader Attia",
+    "Status ": "Perm",
+    "Project": "Al Nahdi",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5510678",
+    "Trainer Name": "Omnia Mohamed",
+    "Status ": "Perm",
+    "Project": "Uber",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4130171",
+    "Trainer Name": "Zainab Elsayed Abdelbadia",
+    "Status ": "Perm",
+    "Project": "AC",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4439731",
+    "Trainer Name": "Omar Mokhtar Abdelaal Elsayed",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5254367",
+    "Trainer Name": "Eslam Mohamed Nabil",
+    "Status ": "Perm",
+    "Project": "Expedia",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5941580",
+    "Trainer Name": "Abdelrahman Ali Ali Hassan",
+    "Status ": "Flex",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5509259",
+    "Trainer Name": "Sohaila Youssef",
+    "Status ": "Perm",
+    "Project": "Shein",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5504783",
+    "Trainer Name": "Rola Ashraf Mahmoud",
+    "Status ": "Perm",
+    "Project": "TUI Travel",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5141059",
+    "Trainer Name": "Abdelrahman Farouk Elattar",
+    "Status ": "Perm",
+    "Project": "Expedia",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5494209",
+    "Trainer Name": "Abdelmoneim Ashraf Mohamed",
+    "Status ": "Flex",
+    "Project": "Talabat",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5145665",
+    "Trainer Name": "Ahmed Mohamed Hassan",
+    "Status ": "Perm",
+    "Project": "Expedia",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5549226",
+    "Trainer Name": "Youssef Emad Amin Abdelmageed",
+    "Status ": "Flex",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "3158392",
+    "Trainer Name": "Yasmine Ezzat Kamel",
+    "Status ": "Perm",
+    "Project": "Ebay",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5624320",
+    "Trainer Name": "Nada Ashraf Galal Sayed",
+    "Status ": "Perm",
+    "Project": "IHG - InterContinental Hotels Group",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5782151",
+    "Trainer Name": "Malak Mohamed Hassan",
+    "Status ": "Perm",
+    "Project": "Booking.com",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "3011738",
+    "Trainer Name": "Aya Wagdy Farid",
+    "Status ": "Perm",
+    "Project": "Lufthansa AG",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5901760",
+    "Trainer Name": "Mohamed Hazem Abdelsamad",
+    "Status ": "Flex",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5501796",
+    "Trainer Name": "Youmna Ehab Mohamed",
+    "Status ": "Perm",
+    "Project": "Temu",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4848025",
+    "Trainer Name": "Eman Gamal Hassan",
+    "Status ": "Perm",
+    "Project": "Freedom Mobile",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4518685",
+    "Trainer Name": "Youssef Gamal Kamel",
+    "Status ": "Perm",
+    "Project": "Etihad",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5698922",
+    "Trainer Name": "Ahmed Sameh Farouk Abdelrahman",
+    "Status ": "Flex",
+    "Project": "Samsung Electronics America",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5512309",
+    "Trainer Name": "Mohamed Darwish",
+    "Status ": "Perm",
+    "Project": "Amazon Twitch",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4316719",
+    "Trainer Name": "Silvana Moheb Hanin",
+    "Status ": "Perm",
+    "Project": "Expedia",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4522648",
+    "Trainer Name": "Mudawi Siraj Hassan",
+    "Status ": "Perm",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5625795",
+    "Trainer Name": "Yasmine Mohamed Mohamed Dabees",
+    "Status ": "Perm",
+    "Project": "Amazon",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5254921",
+    "Trainer Name": "Karim Khaled Khalifa Abdelmageed",
+    "Status ": "Flex",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "6066362",
+    "Trainer Name": "Asmaa Saeed Mahdy",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "3874228",
+    "Trainer Name": "Shaimaa Amin Refaat",
+    "Status ": "Perm",
+    "Project": "AC",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4752039",
+    "Trainer Name": "Mostafa Mohamed Abdelhamid",
+    "Status ": "Perm",
+    "Project": "AT&T Broadband",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5671930",
+    "Trainer Name": "Nadine Zakaria Kamel",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5509977",
+    "Trainer Name": "Belal Shazli",
+    "Status ": "Perm",
+    "Project": "L'oreal",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5897807",
+    "Trainer Name": "Martin Michel Louis",
+    "Status ": "Perm",
+    "Project": "Booking.com",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4834336",
+    "Trainer Name": "Mariam Hamed Elsayed",
+    "Status ": "Perm",
+    "Project": "Facebook",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5509235",
+    "Trainer Name": "Omnia Khalil",
+    "Status ": "Perm",
+    "Project": "Uber",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4372833",
+    "Trainer Name": "Donia Mohamed Abudeif",
+    "Status ": "Perm",
+    "Project": "Samsung Electronics America",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4391933",
+    "Trainer Name": "Nermeen Mahmoud Fahmy",
+    "Status ": "Perm",
+    "Project": "Proctor Financial",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4286840",
+    "Trainer Name": "Naiera Atef Ahmed",
+    "Status ": "Perm",
+    "Project": "Lufthansa AG",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "6203733",
+    "Trainer Name": "Zeinab Alaa Fawzy",
+    "Status ": "Flex",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4928840",
+    "Trainer Name": "Rahma Mohamed Owais",
+    "Status ": "Perm",
+    "Project": "MeiTuan",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5551899",
+    "Trainer Name": "Ezzeldin Yasser Ali",
+    "Status ": "Perm",
+    "Project": "AC",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5936744",
+    "Trainer Name": "Lojain Ehab Abdelrahman",
+    "Status ": "Flex",
+    "Project": "FedEx",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "6025763",
+    "Trainer Name": "Ahmed Mohamed Mohamed Abdelkhaleq",
+    "Status ": "Flex",
+    "Project": "FedEx",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5797362",
+    "Trainer Name": "Ahmed Bassem Abdelaziz",
+    "Status ": "Perm",
+    "Project": "Expedia",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "6047830",
+    "Trainer Name": "Mohamed Ali Abdelgalil",
+    "Status ": "Perm",
+    "Project": "Ebay",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "3559518",
+    "Trainer Name": "Ahmed Yousri Mohamed Elshahat",
+    "Status ": "Perm",
+    "Project": "Samsung Electronics America",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5257971",
+    "Trainer Name": "Hagar Hamdy Abdelgawad",
+    "Status ": "Perm",
+    "Project": "Dish Network L.L.C.",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4158268",
+    "Trainer Name": "Basma Ashraf Elshora",
+    "Status ": "Perm",
+    "Project": "​​The National Telecom Regulatory Authority (NTRA)",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5527509",
+    "Trainer Name": "Sara Sherif Ali",
+    "Status ": "Perm",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5314470",
+    "Trainer Name": "Omar Ahmed Abdeltawab",
+    "Status ": "Perm",
+    "Project": "Talabat",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4279470",
+    "Trainer Name": "Ahmed Samir Hamada",
+    "Status ": "Flex",
+    "Project": "Etihad",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "2494835",
+    "Trainer Name": "Nader Moustafa Nabil",
+    "Status ": "Perm",
+    "Project": "Evolve Vacation Rental Network",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "3805065",
+    "Trainer Name": "Nourhan Sayed Youssef",
+    "Status ": "Perm",
+    "Project": "Ebay",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5627803",
+    "Trainer Name": "Rowan Elsayed Soliman Elkhouly",
+    "Status ": "Perm",
+    "Project": "Booking.com",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5701673",
+    "Trainer Name": "Ahmed Mostafa Saad",
+    "Status ": "Perm",
+    "Project": "AT&T Broadband",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5504036",
+    "Trainer Name": "Donia Omran",
+    "Status ": "Perm",
+    "Project": "Booking.com",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5510577",
+    "Trainer Name": "Mohamed Ahmed Shawki",
+    "Status ": "Perm",
+    "Project": "Uber",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5620200",
+    "Trainer Name": "Ahmed Abdelaziz Mousa",
+    "Status ": "Perm",
+    "Project": "Western Union",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "6256710",
+    "Trainer Name": "Poula Nader Adly",
+    "Status ": "Flex",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4779509",
+    "Trainer Name": "Mirna Nady Abdelmalak",
+    "Status ": "Perm",
+    "Project": "Starlink",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5207575",
+    "Trainer Name": "Modasser Magdy Elshater",
+    "Status ": "Perm",
+    "Project": "Uber",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5036881",
+    "Trainer Name": "Youssef Mohamed Ali",
+    "Status ": "Perm",
+    "Project": "Teleperformance Egypt",
+    "ATM": "LinkedIn ",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5552166",
+    "Trainer Name": "Habiba Mostafa",
+    "Status ": "Perm",
+    "Project": "FedEx",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "3875095",
+    "Trainer Name": "Mennatallah Mohamed Elsayed",
+    "Status ": "Perm",
+    "Project": "The first Group",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4377054",
+    "Trainer Name": "Youssef Mohamed Mohsen",
+    "Status ": "Perm",
+    "Project": "Scene+",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5646206",
+    "Trainer Name": "Youssef Ahmed Hafez Ahmed",
+    "Status ": "Flex",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "3271677",
+    "Trainer Name": "Fayza Ashraf Taha",
+    "Status ": "Perm",
+    "Project": "LanguageLine Solutions",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5148239",
+    "Trainer Name": "Hussameldin Omer Awad",
+    "Status ": "Perm",
+    "Project": "AT&T",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5534020",
+    "Trainer Name": "Mai Mohamed Farouk",
+    "Status ": "Flex",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5551785",
+    "Trainer Name": "Maha Hesham Salem",
+    "Status ": "Flex",
+    "Project": "Samsung Electronics America",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5136455",
+    "Trainer Name": "Rawda Ahmed Elmak",
+    "Status ": "Perm",
+    "Project": "AT&T",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "3763246",
+    "Trainer Name": "Naglaa Ali Hassanein",
+    "Status ": "Perm",
+    "Project": "Amazon",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5512050",
+    "Trainer Name": "Hemat ali",
+    "Status ": "Perm",
+    "Project": "Amazon",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5733722",
+    "Trainer Name": "Hashem Medhat Abbas",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5501238",
+    "Trainer Name": "Ahmed Ayman Ali",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "6035106",
+    "Trainer Name": "Mohamed Abdelrahman Youssef",
+    "Status ": "Perm",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "2981498",
+    "Trainer Name": "Hanin Anwar Adel",
+    "Status ": "Perm",
+    "Project": "LanguageLine Solutions",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "3372090",
+    "Trainer Name": "Salma Abdelaaty Mohamed Hammad",
+    "Status ": "Flex",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "3521924",
+    "Trainer Name": "Sara Adel Ahmed Tawfeek",
+    "Status ": "Perm",
+    "Project": "Amazon",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4857683",
+    "Trainer Name": "Mohamed Ahmed Abdeltawab",
+    "Status ": "Perm",
+    "Project": "Blizzard Entertainment",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5480190",
+    "Trainer Name": "Mai Walid Farouk",
+    "Status ": "Perm",
+    "Project": "SumUp Payments Ltd",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4779027",
+    "Trainer Name": "Rim Ashraf Tolba",
+    "Status ": "Perm",
+    "Project": "AC",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4745557",
+    "Trainer Name": "Mariam Mamdouh Hafez",
+    "Status ": "Perm",
+    "Project": "Careem",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5721992",
+    "Trainer Name": "Nourhan Helmy Mohamed",
+    "Status ": "Perm",
+    "Project": "Microsoft",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5894893",
+    "Trainer Name": "Mahmoud Ahmed Mohamed Abdelkader",
+    "Status ": "Flex",
+    "Project": "Etihad",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5739098",
+    "Trainer Name": "Hamdy Emad Abdelshafouk",
+    "Status ": "Perm",
+    "Project": "Ebay",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4626057",
+    "Trainer Name": "Abdelkarim Mohamed Ghariany",
+    "Status ": "Perm",
+    "Project": "Expedia",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5345170",
+    "Trainer Name": "Salma Ashraf Qassem",
+    "Status ": "Perm",
+    "Project": "Microsoft",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "3983841",
+    "Trainer Name": "MohyEldin Tarek Ibrahim",
+    "Status ": "Perm",
+    "Project": "Dreame",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4738689",
+    "Trainer Name": "Marlen Michel Shafik",
+    "Status ": "Flex",
+    "Project": "Samsung Electronics America",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4540869",
+    "Trainer Name": "Radwa Yousry Sayed",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4494553",
+    "Trainer Name": "Mostafa Fathy Nasr",
+    "Status ": "Perm",
+    "Project": "Amazon",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4589189",
+    "Trainer Name": "Maryam Ahmed Ahmed",
+    "Status ": "Perm",
+    "Project": "Samsung Electronics MENA",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5463433",
+    "Trainer Name": "Engy Ahmed Hassan",
+    "Status ": "Perm",
+    "Project": "IHG - InterContinental Hotels Group",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5865908",
+    "Trainer Name": "Karen Nessim Helmi",
+    "Status ": "Perm",
+    "Project": "Booking.com",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4601009",
+    "Trainer Name": "Hamas Hosny Mohamed",
+    "Status ": "Flex",
+    "Project": "Samsung Electronics America",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5630638",
+    "Trainer Name": "Hamsa Maged Eissa",
+    "Status ": "Perm",
+    "Project": "Philip Morris",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4912276",
+    "Trainer Name": "Youssef Mohamed Fathy",
+    "Status ": "Perm",
+    "Project": "Hungerstation",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "6097350",
+    "Trainer Name": "Sara Farid Hosny",
+    "Status ": "Flex",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4762336",
+    "Trainer Name": "Abdelrahman Yasser Ahmed",
+    "Status ": "Perm",
+    "Project": "MeiTuan",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "6338464",
+    "Trainer Name": "Amr Samy Mohamed",
+    "Status ": "Flex",
+    "Project": "Samsung Electronics America",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4928542",
+    "Trainer Name": "Ahmed Abdelmoneim Mostafa",
+    "Status ": "Perm",
+    "Project": "Talabat",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4959706",
+    "Trainer Name": "Shaimaa Saeed Desouky",
+    "Status ": "Perm",
+    "Project": "Samsung Egypt",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "3739864",
+    "Trainer Name": "Mahmoud Mohamed Osama",
+    "Status ": "Perm",
+    "Project": "AT&T",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5601246",
+    "Trainer Name": "Mostafa Mohamed Gaber",
+    "Status ": "Perm",
+    "Project": "AT&T Fiber",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "1592910",
+    "Trainer Name": "Mohamed Ashraf Saleh",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5190901",
+    "Trainer Name": "Menna Montaser Rateb",
+    "Status ": "Perm",
+    "Project": "AT&T Broadband",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5129286",
+    "Trainer Name": "Youssef Taher Younis",
+    "Status ": "Perm",
+    "Project": "​​The National Telecom Regulatory Authority (NTRA)",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5625739",
+    "Trainer Name": "Mostafa Maged Mohamed Mahmoud",
+    "Status ": "Perm",
+    "Project": "Amazon",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "1866628",
+    "Trainer Name": "Christina Fahmy Hany",
+    "Status ": "Perm",
+    "Project": "Evolve Vacation Rental Network",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "6064510",
+    "Trainer Name": "Razan Abdelrehim Mahmoud",
+    "Status ": "Perm",
+    "Project": "FedEx",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5330290",
+    "Trainer Name": "Ahmed Mohamed Sanad Mohamed",
+    "Status ": "Perm",
+    "Project": "Honor",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5008778",
+    "Trainer Name": "Hossam Hesham Abdelfattah",
+    "Status ": "Perm",
+    "Project": "Amazon",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "2802213",
+    "Trainer Name": "Maysa Ahmed Mahmoud",
+    "Status ": "Perm",
+    "Project": "Uber",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5623245",
+    "Trainer Name": "Youssef Mohamed hassan Mohallel",
+    "Status ": "Perm",
+    "Project": "Uber",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "2259329",
+    "Trainer Name": "Mohamed Yahia Shalaby Sadat",
+    "Status ": "Perm",
+    "Project": "TLS Contact",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "3782175",
+    "Trainer Name": "Ibrahim Ahmed Ibrahim Mohamed",
+    "Status ": "Perm",
+    "Project": "Samsung Electronics MENA",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5712307",
+    "Trainer Name": "Mariam Walid Gharib",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5143419",
+    "Trainer Name": "Roba Kamal Abdelrahman",
+    "Status ": "Perm",
+    "Project": "DishTV",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4704735",
+    "Trainer Name": "Abdelrahman Essam Shalaby",
+    "Status ": "Perm",
+    "Project": "Samsung Electronics Gulf",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5273200",
+    "Trainer Name": "Alaa Abdallah Elsayed",
+    "Status ": "Flex",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4314428",
+    "Trainer Name": "Marina Michel Milad Hanna",
+    "Status ": "Flex",
+    "Project": "AC",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4298996",
+    "Trainer Name": "Abdelrahman Fawzy Elsayed",
+    "Status ": "Flex",
+    "Project": "AC",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5503951",
+    "Trainer Name": "Abdullah Rizk",
+    "Status ": "Perm",
+    "Project": "Amazon",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5345090",
+    "Trainer Name": "Mai Ahmed Ali",
+    "Status ": "Perm",
+    "Project": "Freedom Mobile",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5979526",
+    "Trainer Name": "Farah Tarek Farouk Othman",
+    "Status ": "Perm",
+    "Project": "AT&T",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5171711",
+    "Trainer Name": "Mazen Nabil Ismail",
+    "Status ": "Perm",
+    "Project": "Dreame",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "6009368",
+    "Trainer Name": "Youssef Ahmed Saeed Ali",
+    "Status ": "Flex",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5543609",
+    "Trainer Name": "Omar Tarek Ali",
+    "Status ": "Flex",
+    "Project": "Samsung Egypt",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5180480",
+    "Trainer Name": "Gina Magdy Fawzy",
+    "Status ": "Perm",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4821589",
+    "Trainer Name": "Hania Yasmine Kaoua",
+    "Status ": "Perm",
+    "Project": "Western Union",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "6069280",
+    "Trainer Name": "Rana Mamdouh Rashad",
+    "Status ": "Perm",
+    "Project": "Teleperformance Egypt",
+    "ATM": "LinkedIn ",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5473374",
+    "Trainer Name": "Alaa Khaled Abdelmoneim",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5222336",
+    "Trainer Name": "Joseph Samy Fahmy",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5890066",
+    "Trainer Name": "Seif Noureldin Omara",
+    "Status ": "Flex",
+    "Project": "AT&T Broadband",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5131550",
+    "Trainer Name": "Maha Mohamed Abdellatif",
+    "Status ": "Perm",
+    "Project": "Seagate",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5686988",
+    "Trainer Name": "Marianne Samir Makary",
+    "Status ": "Perm",
+    "Project": "Wyndham",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "6201980",
+    "Trainer Name": "Ahmed Mahmoud Hamdy",
+    "Status ": "Flex",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4407121",
+    "Trainer Name": "Sara Hussein Ibrahim",
+    "Status ": "Perm",
+    "Project": "Western Union",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5167699",
+    "Trainer Name": "Nada Moataz Fouad",
+    "Status ": "Perm",
+    "Project": "Expedia",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "3295415",
+    "Trainer Name": "Meshael Ibrahim Seraj",
+    "Status ": "Perm",
+    "Project": "AT&T",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5746681",
+    "Trainer Name": "Bassant Ashraf Elsayed",
+    "Status ": "Perm",
+    "Project": "Amazon",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "3824449",
+    "Trainer Name": "Omnia Anwar Mokhtar",
+    "Status ": "Perm",
+    "Project": "Careem",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5509010",
+    "Trainer Name": "Ramdan Ibrahim",
+    "Status ": "Perm",
+    "Project": "Uber",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5870005",
+    "Trainer Name": "Nourhan Hussein Mohamed",
+    "Status ": "Perm",
+    "Project": "IHG - InterContinental Hotels Group",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5358172",
+    "Trainer Name": "Hanin Raafat Merghany",
+    "Status ": "Perm",
+    "Project": "Scene+",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5883002",
+    "Trainer Name": "Mohamed Essam Mohamed Mahmoud",
+    "Status ": "Perm",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5392541",
+    "Trainer Name": "Mohamed Mostafa Ali",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5004568",
+    "Trainer Name": "Omar Yasser Gamal",
+    "Status ": "Perm",
+    "Project": "Hungerstation",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5568897",
+    "Trainer Name": "Amr Ismail Ibrahim",
+    "Status ": "Perm",
+    "Project": "Riyadh Air",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5624397",
+    "Trainer Name": "Akram Samy Goda Hassan",
+    "Status ": "Perm",
+    "Project": "Uber",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4272624",
+    "Trainer Name": "Aseel Mamdouh Elsandalgi",
+    "Status ": "Perm",
+    "Project": "AC",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5289647",
+    "Trainer Name": "Marwa Mahmoud Ahmed Hassan",
+    "Status ": "Flex",
+    "Project": "Samsung Electronics America",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "3763245",
+    "Trainer Name": "Ghada Fathy Abdelfattah",
+    "Status ": "Perm",
+    "Project": "Amazon",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5821094",
+    "Trainer Name": "Ahmed Mahmoud Ahmed Elsayed",
+    "Status ": "Perm",
+    "Project": "Microsoft",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4391635",
+    "Trainer Name": "Sama Maher Sayed",
+    "Status ": "Perm",
+    "Project": "Microsoft",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5833132",
+    "Trainer Name": "Israa Nasef Mousa",
+    "Status ": "Flex",
+    "Project": "AT&T Broadband",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5274294",
+    "Trainer Name": "Omnia Elsayed Abdelsamad",
+    "Status ": "Perm",
+    "Project": "Facebook",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4589163",
+    "Trainer Name": "Youssef Saeed Abdelhamid",
+    "Status ": "Perm",
+    "Project": "Talabat",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5438519",
+    "Trainer Name": "Habiba Ahmed Ibrahim",
+    "Status ": "Perm",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "6339589",
+    "Trainer Name": "Rahma Gamal Abdelsamie",
+    "Status ": "Flex",
+    "Project": "Samsung Electronics America",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5334251",
+    "Trainer Name": "Amany Ehab Hassan",
+    "Status ": "Perm",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4878928",
+    "Trainer Name": "Nouran Mahdy Abdelrazik",
+    "Status ": "Perm",
+    "Project": "Etihad",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5034958",
+    "Trainer Name": "Youssef Ahmed Abdelhalim",
+    "Status ": "Flex",
+    "Project": "Talabat",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5196012",
+    "Trainer Name": "Omar Mohamed Noureldin",
+    "Status ": "Perm",
+    "Project": "Ebay",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5304253",
+    "Trainer Name": "Bashir Mohamed Elbashir",
+    "Status ": "Perm",
+    "Project": "Dish Network L.L.C.",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4382566",
+    "Trainer Name": "Aya Ahmed Kamal",
+    "Status ": "Perm",
+    "Project": "Etihad",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5195466",
+    "Trainer Name": "Sandra Samir Thabet",
+    "Status ": "Perm",
+    "Project": "AC",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4399279",
+    "Trainer Name": "Shahenda Ramadan Mohammadi",
+    "Status ": "Perm",
+    "Project": "Amazon",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5827618",
+    "Trainer Name": "Mohamed Osama Ibrahim Ali",
+    "Status ": "Flex",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "2348203",
+    "Trainer Name": "Engy Tarek Mohamed",
+    "Status ": "Perm",
+    "Project": "Freedom Mobile",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5625869",
+    "Trainer Name": "Menna allah Mosatafa Mansi",
+    "Status ": "Perm",
+    "Project": "Amazon",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4812171",
+    "Trainer Name": "Yara Saber Abdelkader",
+    "Status ": "Perm",
+    "Project": "T-Mobile",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5509401",
+    "Trainer Name": "Nardine Abdelsaid",
+    "Status ": "Perm",
+    "Project": "TRAVIX",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5858619",
+    "Trainer Name": "Nourhan Ashraf Ali Ahmed",
+    "Status ": "Perm",
+    "Project": "Microsoft",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5510563",
+    "Trainer Name": "nermine mohamed",
+    "Status ": "Perm",
+    "Project": "Uber",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5139597",
+    "Trainer Name": "Rawan Karamalla Etahir",
+    "Status ": "Perm",
+    "Project": "T-Mobile",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5445686",
+    "Trainer Name": "Abdelrahman Yasser Mahmoud",
+    "Status ": "Flex",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5546654",
+    "Trainer Name": "Mohamed Abad",
+    "Status ": "Perm",
+    "Project": "Ras Al Khaimah Economic Zone",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "3947259",
+    "Trainer Name": "Engy Medhat Mohamed Ezzat",
+    "Status ": "Perm",
+    "Project": "Samsung Egypt",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5509447",
+    "Trainer Name": "Mariam Shnowda",
+    "Status ": "Perm",
+    "Project": "Cleopatra hospitals group",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4788323",
+    "Trainer Name": "Abdelrahman Sherif Abdelhady",
+    "Status ": "Perm",
+    "Project": "Uber",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4784267",
+    "Trainer Name": "Hossameldin Hassan Sayed",
+    "Status ": "Perm",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5505296",
+    "Trainer Name": "kariem mahdy",
+    "Status ": "Perm",
+    "Project": "Uber",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4892917",
+    "Trainer Name": "Nemer Faisal Rahhal",
+    "Status ": "Perm",
+    "Project": "IHG - InterContinental Hotels Group",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4934127",
+    "Trainer Name": "Esraa Ahmed Eltantawy",
+    "Status ": "Perm",
+    "Project": "Etihad",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4176127",
+    "Trainer Name": "Ibrahim Abbas Abbas",
+    "Status ": "Perm",
+    "Project": "Valu",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4589203",
+    "Trainer Name": "Ahmed Abudeif Sayed",
+    "Status ": "Perm",
+    "Project": "Talabat",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "6039515",
+    "Trainer Name": "Abanoub Nagy Moabad",
+    "Status ": "Flex",
+    "Project": "Riyadh Air",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "3916854",
+    "Trainer Name": "Samir Mohamed Hassan",
+    "Status ": "Perm",
+    "Project": "MeiTuan",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5301655",
+    "Trainer Name": "Rawan Hussein Youssef",
+    "Status ": "Perm",
+    "Project": "Cricket",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5364797",
+    "Trainer Name": "Alaa Adel Elsayed",
+    "Status ": "Perm",
+    "Project": "Talabat",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4260385",
+    "Trainer Name": "Farah Emad Hanafi",
+    "Status ": "Perm",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4893018",
+    "Trainer Name": "Emadeldin Ali Nasr",
+    "Status ": "Perm",
+    "Project": "ON AG",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "3855851",
+    "Trainer Name": "Mohamed Garer Ibrahim",
+    "Status ": "Perm",
+    "Project": "Al Nahdi",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5218269",
+    "Trainer Name": "Eslam Mohamed Shaker",
+    "Status ": "Flex",
+    "Project": "Etihad",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5512102",
+    "Trainer Name": "Omneya Hassan",
+    "Status ": "Perm",
+    "Project": "Amazon",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4427477",
+    "Trainer Name": "Eman Hisham Gamaleldin",
+    "Status ": "Perm",
+    "Project": "​​The National Telecom Regulatory Authority (NTRA)",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5392537",
+    "Trainer Name": "Gelan Mohamed Hamed",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4051236",
+    "Trainer Name": "Mostafa Hamdy Ayad",
+    "Status ": "Perm",
+    "Project": "Talabat",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "6132390",
+    "Trainer Name": "Mohamed Medhat Fouad Mohamed",
+    "Status ": "Flex",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "2946977",
+    "Trainer Name": "Beshoy Paul Shokry",
+    "Status ": "Perm",
+    "Project": "Expedia",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "3356428",
+    "Trainer Name": "Eslam Alaaeldin Hassan",
+    "Status ": "Perm",
+    "Project": "Ring Amazon",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "3549621",
+    "Trainer Name": "Mahmoud Assem Mohamed Hussein",
+    "Status ": "Perm",
+    "Project": "Riyadh Air",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5627207",
+    "Trainer Name": "Touka Mohamed Essmat Abdelmoaty",
+    "Status ": "Perm",
+    "Project": "Booking.com",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5510942",
+    "Trainer Name": "Rowan Hamed",
+    "Status ": "Perm",
+    "Project": "Uber",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "6082823",
+    "Trainer Name": "Roaa Amin Ali",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4565221",
+    "Trainer Name": "Eman Mohamed Elgangihy",
+    "Status ": "Perm",
+    "Project": "MeiTuan",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5256619",
+    "Trainer Name": "Rawan Shohdy Gamal Attia",
+    "Status ": "Perm",
+    "Project": "Facebook",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5523458",
+    "Trainer Name": "Yasmine Wael Galal",
+    "Status ": "Perm",
+    "Project": "Temu",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4273677",
+    "Trainer Name": "Ahmed Mohamed Gad",
+    "Status ": "Perm",
+    "Project": "ToYou",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5077183",
+    "Trainer Name": "Belal Abdelrazik Ali",
+    "Status ": "Perm",
+    "Project": "Talabat",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4861417",
+    "Trainer Name": "Asmaa Mokhtar Amin",
+    "Status ": "Perm",
+    "Project": "Cricket",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "3807659",
+    "Trainer Name": "Rahma Bahgat Hamza",
+    "Status ": "Perm",
+    "Project": "Teleperformance Egypt",
+    "ATM": "LinkedIn ",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "6099577",
+    "Trainer Name": "Mostafa Salah Ramadan",
+    "Status ": "Flex",
+    "Project": "Microsoft",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4965586",
+    "Trainer Name": "Amir Hamada Fadl",
+    "Status ": "Perm",
+    "Project": "Proctor Financial",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5304156",
+    "Trainer Name": "Rahma Mohamed Zaki",
+    "Status ": "Perm",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5289874",
+    "Trainer Name": "Merna Mamdouh Ali",
+    "Status ": "Perm",
+    "Project": "Expedia",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "6061008",
+    "Trainer Name": "Amina mostafa elsayed",
+    "Status ": "Perm",
+    "Project": "FedEx",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5717637",
+    "Trainer Name": "Rahaf Mohamed Elsayed",
+    "Status ": "Flex",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5904538",
+    "Trainer Name": "Shams Mohamed Ali",
+    "Status ": "Flex",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5875382",
+    "Trainer Name": "Nourhan Magdy Mahmoud",
+    "Status ": "Flex",
+    "Project": "Proctor Financial",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5704386",
+    "Trainer Name": "Omar Mohamed Ali",
+    "Status ": "Perm",
+    "Project": "AT&T Fiber",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "6059022",
+    "Trainer Name": "Ahmed Emadeldin Ahmed",
+    "Status ": "Perm",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4685053",
+    "Trainer Name": "Aya Ahmed Elsayed",
+    "Status ": "Perm",
+    "Project": "Microsoft",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5217583",
+    "Trainer Name": "Ahmed Fawzy Abdelqader",
+    "Status ": "Perm",
+    "Project": "Riverty",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "3858199",
+    "Trainer Name": "Ebthal Ibrahim Mohamed",
+    "Status ": "Perm",
+    "Project": "Talabat",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4286253",
+    "Trainer Name": "Noureldin Gamaleldin Yehia",
+    "Status ": "Perm",
+    "Project": "Dish Network L.L.C.",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5632072",
+    "Trainer Name": "Souad shahin Mohamed hassanian",
+    "Status ": "Perm",
+    "Project": "Booking.com",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4726909",
+    "Trainer Name": "Nadeen Nagaty Kamal",
+    "Status ": "Perm",
+    "Project": "SumUp Payments Ltd",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5509182",
+    "Trainer Name": "Abeer Ahmed",
+    "Status ": "Perm",
+    "Project": "TruDoc",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5773534",
+    "Trainer Name": "Dalia Ahmed Mohamed",
+    "Status ": "Perm",
+    "Project": "ToYou",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4136160",
+    "Trainer Name": "Mai Alaaeldin Mohamed",
+    "Status ": "Perm",
+    "Project": "Talabat",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5510879",
+    "Trainer Name": "Maha Abosreaa",
+    "Status ": "Perm",
+    "Project": "Uber",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5904569",
+    "Trainer Name": "Mark Maher Mousa",
+    "Status ": "Perm",
+    "Project": "Microsoft",
+    "ATM": "Ahmed Mahmoud Elaghoury",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4675111",
+    "Trainer Name": "Mohamed Khalil Abdellatif",
+    "Status ": "Perm",
+    "Project": "Talabat",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5512255",
+    "Trainer Name": "Marina Yousef",
+    "Status ": "Perm",
+    "Project": "Riverty",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5136461",
+    "Trainer Name": "Mohamed Youssef Ibrahim",
+    "Status ": "Perm",
+    "Project": "Ebay",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5733756",
+    "Trainer Name": "Yehia Mahmoud Hassan",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "6067706",
+    "Trainer Name": "Pola Nagy Fekry",
+    "Status ": "Flex",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "6075774",
+    "Trainer Name": "Mahmoud Essam Ibrahim",
+    "Status ": "Flex",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5189153",
+    "Trainer Name": "Marwan Hassan Hassan",
+    "Status ": "Perm",
+    "Project": "Temu",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5475594",
+    "Trainer Name": "Alaa Ali Hamdy",
+    "Status ": "Perm",
+    "Project": "Freedom Mobile",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5961576",
+    "Trainer Name": "Basmala Mohamed Mostafa",
+    "Status ": "Perm",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5327667",
+    "Trainer Name": "Malaka Ahmed Abdelaziz",
+    "Status ": "Perm",
+    "Project": "Booking.com",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "3634635",
+    "Trainer Name": "Asmaa Faisal ElHabibi",
+    "Status ": "Perm",
+    "Project": "Netflix",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5061061",
+    "Trainer Name": "Mariam Moheb Younis",
+    "Status ": "Perm",
+    "Project": "Samsung Electronics America",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5564694",
+    "Trainer Name": "Dalia Wael Ibrahim",
+    "Status ": "Perm",
+    "Project": "Temu",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5714295",
+    "Trainer Name": "Seifeldin Mohamed Abdelhady",
+    "Status ": "Flex",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5686622",
+    "Trainer Name": "Aml Mahmoud Mohamed",
+    "Status ": "Perm",
+    "Project": "AT&T Fiber",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5467296",
+    "Trainer Name": "Mohanad Osama Rashed",
+    "Status ": "Flex",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5604982",
+    "Trainer Name": "Youssef Mohamed Hesham",
+    "Status ": "Perm",
+    "Project": "TLS Contact",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5857304",
+    "Trainer Name": "Yassin Hussein Elsayed",
+    "Status ": "Perm",
+    "Project": "Comcast",
+    "ATM": "Mohamed Abdelrahman Abdalla",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5898767",
+    "Trainer Name": "Kirolos Elamir Sadek",
+    "Status ": "Perm",
+    "Project": "Condor Flugdienst GmbH",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4104650",
+    "Trainer Name": "Nagwa Abdelnaby Abdelhamed",
+    "Status ": "Perm",
+    "Project": "​​The National Telecom Regulatory Authority (NTRA)",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5617825",
+    "Trainer Name": "Mahmoud Hosny Abdelaziz goda",
+    "Status ": "Perm",
+    "Project": "Shein",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4589138",
+    "Trainer Name": "Mostafa Abdo Farghal",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5392542",
+    "Trainer Name": "Rana Ibrahim Mousa",
+    "Status ": "Perm",
+    "Project": "VINTED",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "6338466",
+    "Trainer Name": "Mennatullah Hany Mohamed Elsaeed",
+    "Status ": "Perm",
+    "Project": "Samsung Electronics America",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5392516",
+    "Trainer Name": "Ahmed Mohamed Salem",
+    "Status ": "Perm",
+    "Project": "Temu",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4802088",
+    "Trainer Name": "Mahmoud Alaa Ramadan",
+    "Status ": "Perm",
+    "Project": "JustMop",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4105087",
+    "Trainer Name": "Abdelrahman Karam Abdelsadek",
+    "Status ": "Perm",
+    "Project": "Etihad",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4418724",
+    "Trainer Name": "Hadeer Sayed Abdelghani",
+    "Status ": "Perm",
+    "Project": "Expedia",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5510712",
+    "Trainer Name": "Mahmoud Zenhom",
+    "Status ": "Perm",
+    "Project": "Landmark Group",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "2704963",
+    "Trainer Name": "Mahmoud Mokhtar Abdelkhalea",
+    "Status ": "Perm",
+    "Project": "Samsung Electronics America",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5850661",
+    "Trainer Name": "Nour Elhoda Mosaad",
+    "Status ": "Perm",
+    "Project": "Booking.com",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5512341",
+    "Trainer Name": "Farah mohamed",
+    "Status ": "Perm",
+    "Project": "Booking.com",
+    "ATM": "Abdallah Ghanem",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5532316",
+    "Trainer Name": "Mohamed Yasser Mohamed",
+    "Status ": "Flex",
+    "Project": "Etihad",
+    "ATM": "Martina Mikhael",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "3167022",
+    "Trainer Name": "Khaled Ahmed Mohammed",
+    "Status ": "Perm",
+    "Project": "AC",
+    "ATM": "Yassin Ashraf Hussein",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "4826767",
+    "Trainer Name": "Mayar Beshir Ahmed",
+    "Status ": "Perm",
+    "Project": "JustMop",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "3098665",
+    "Trainer Name": "Mohabeldin Mohamed Hassan",
+    "Status ": "Perm",
+    "Project": "Samsung Electronics America",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5509147",
+    "Trainer Name": "Mohmed Mohamed",
+    "Status ": "Perm",
+    "Project": "Cleopatra hospitals group",
+    "ATM": "Toka Hesham Abobakr",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "2488664",
+    "Trainer Name": "Hesham GamalEldin Hedayet Mohamed",
+    "Status ": "Perm",
+    "Project": "Xiaomi",
+    "ATM": "Mohamed Sayed Gomaa",
+    "TM": "Ali Hazem"
+  },
+  {
+    "Ident": "5875373",
+    "Trainer Name": "Omar Walid Ali",
+    "Status ": "Perm",
+    "Project": "Proctor Financial",
+    "ATM": "Mahmoud Khaled Mahmoud Ibrahim",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "4676178",
+    "Trainer Name": "Mohammed Yusuf Usmael",
+    "Status ": "Perm",
+    "Project": "DishTV",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  },
+  {
+    "Ident": "5624675",
+    "Trainer Name": "Hebatallah Mohamed Aly Mansour",
+    "Status ": "Perm",
+    "Project": "FedEx",
+    "ATM": "Youssef Saleem ",
+    "TM": "Abdallah Ghanem"
+  }
+    ]
+  }
+  </script>
+
+  <script>
+    let rawData = { projects: [], trainers: [] };
+
+    // Initialize Dashboard Application
+    window.addEventListener('DOMContentLoaded', () => {
+      try {
+        const rawJson = document.getElementById('dashboard-data').textContent;
+        rawData = JSON.parse(rawJson);
+      } catch (e) {
+        console.error("Failed to parse embedded JSON data", e);
+      }
+      initTMDropdown();
+      processAndRender();
+    });
+
+    // Helper: Normalize string property keys to handle trailing spaces (e.g., "Flex ", "Status ")
+    function getProp(obj, propName) {
+      if (obj[propName] !== undefined) return obj[propName];
+      const trimmedKey = Object.keys(obj).find(k => k.trim() === propName.trim());
+      return trimmedKey ? obj[trimmedKey] : "";
+    }
+
+    // Populate TM Dropdown Menu dynamically
+    function initTMDropdown() {
+      const tmSet = new Set();
+      rawData.trainers.forEach(t => {
+        const tm = getProp(t, "TM");
+        if (tm) tmSet.add(tm.trim());
+      });
+
+      const tmSelect = document.getElementById('filterTM');
+      tmSet.forEach(tm => {
+        const opt = document.createElement('option');
+        opt.value = tm;
+        opt.textContent = tm;
+        tmSelect.appendChild(opt);
+      });
+    }
+
+    // Handle Training Manager Selection Change
+    function onTMChange() {
+      const selectedTM = document.getElementById('filterTM').value;
+      const amContainer = document.getElementById('amButtonGroup');
+      const amHint = document.getElementById('amHint');
+      amContainer.innerHTML = '';
+
+      if (selectedTM === 'ALL') {
+        amHint.style.display = 'block';
+      } else {
+        amHint.style.display = 'none';
+        const amSet = new Set();
+        rawData.trainers.forEach(t => {
+          const tm = getProp(t, "TM");
+          const am = getProp(t, "ATM");
+          if (tm && tm.trim() === selectedTM && am) {
+            amSet.add(am.trim());
+          }
+        });
+
+        amSet.forEach(am => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'filter-btn';
+          btn.setAttribute('data-value', am);
+          btn.onclick = function() { toggleButton(this); };
+          btn.textContent = am;
+          amContainer.appendChild(btn);
+        });
+      }
+
+      processAndRender();
+    }
+
+    // Toggle active state for multi-select filter buttons
+    function toggleButton(btn) {
+      btn.classList.toggle('active');
+      processAndRender();
+    }
+
+    // Helper to extract active values from a button group
+    function getActiveButtonValues(containerId) {
+      const container = document.getElementById(containerId);
+      if (!container) return [];
+      const activeBtns = container.querySelectorAll('.filter-btn.active');
+      return Array.from(activeBtns).map(b => b.getAttribute('data-value'));
+    }
+
+    // Core Processing & Rendering Pipeline
+    function processAndRender() {
+      const selectedTM = document.getElementById('filterTM').value;
+      const selectedAMs = getActiveButtonValues('amButtonGroup');
+      const selectedStatuses = getActiveButtonValues('statusButtonGroup');
+      const selectedTrainerStatuses = getActiveButtonValues('trainerStatusButtonGroup');
+
+      const projectSearchTerm = document.getElementById('projectSearch').value.toLowerCase().trim();
+      const trainerSearchTerm = document.getElementById('trainerSearch').value.toLowerCase().trim();
+
+      // 1. Filter Trainers
+      let filteredTrainers = rawData.trainers.filter(t => {
+        const tm = getProp(t, "TM").trim();
+        const am = getProp(t, "ATM").trim();
+        const status = getProp(t, "Status").trim();
+        const name = getProp(t, "Trainer Name").toLowerCase();
+        const ident = getProp(t, "Ident").toLowerCase();
+
+        // TM Filter
+        if (selectedTM !== 'ALL' && tm !== selectedTM) return false;
+
+        // ATM Multi-Select Filter
+        if (selectedAMs.length > 0 && !selectedAMs.includes(am)) return false;
+
+        // Trainer Status Multi-Select Filter (Flex / Perm)
+        if (selectedTrainerStatuses.length > 0 && !selectedTrainerStatuses.includes(status)) return false;
+
+        // Trainer Search Filter
+        if (trainerSearchTerm && !name.includes(trainerSearchTerm) && !ident.includes(trainerSearchTerm)) {
+          return false;
+        }
+
+        return true;
+      });
+
+      // Map allowed projects based on filtered trainers when TM or AM is selected
+      let allowedProjects = null;
+      if (selectedTM !== 'ALL' || selectedAMs.length > 0) {
+        allowedProjects = new Set(filteredTrainers.map(t => getProp(t, "Project").trim()));
+      }
+
+      // 2. Filter Projects
+      let filteredProjects = rawData.projects.filter(p => {
+        const projName = getProp(p, "Project").trim();
+        const flexStatus = getProp(p, "Status (Including Flex)").trim();
+
+        if (allowedProjects && !allowedProjects.has(projName)) return false;
+
+        // Ratio Status (Flex) Filter
+        if (selectedStatuses.length > 0 && !selectedStatuses.includes(flexStatus)) return false;
+
+        // Search Filter
+        if (projectSearchTerm && !projName.toLowerCase().includes(projectSearchTerm)) return false;
+
+        return true;
+      });
+
+      // Update KPI Cards
+      updateKPIs(filteredTrainers);
+
+      // Render Projects Table
+      renderProjectsTable(filteredProjects);
+
+      // Render Trainers Table (Sorted by Project Order, Perm first then Flex)
+      renderTrainersTable(filteredTrainers, rawData.projects);
+    }
+
+    // Update KPI Summary Metrics
+    function updateKPIs(trainersList) {
+      let flexCount = 0;
+      let permCount = 0;
+
+      trainersList.forEach(t => {
+        const status = getProp(t, "Status").trim();
+        if (status === 'Flex') flexCount++;
+        else if (status === 'Perm') permCount++;
+      });
+
+      document.getElementById('kpiTotal').textContent = trainersList.length;
+      document.getElementById('kpiFlex').textContent = flexCount;
+      document.getElementById('kpiPerm').textContent = permCount;
+    }
+
+    // Render Projects Overview Table
+    function renderProjectsTable(projects) {
+      const tbody = document.getElementById('projectsTbody');
+      tbody.innerHTML = '';
+
+      projects.forEach(p => {
+        const tr = document.createElement('tr');
+        const flexStatus = getProp(p, "Status (Including Flex)").trim();
+        const woFlexStatus = getProp(p, "Status (Without Flex)").trim();
+
+        tr.innerHTML = `
+          <td><strong>${getProp(p, "Project")}</strong></td>
+          <td>${getProp(p, "HC")}</td>
+          <td>${getProp(p, "Trainer HC")}</td>
+          <td>${getProp(p, "Flex")}</td>
+          <td>${getProp(p, "Ratio (Including Flex)")}</td>
+          <td>${getProp(p, "Perm Staff Ratio")}</td>
+          <td>${getProp(p, "Contractual Ratio")}</td>
+          <td>${getStatusBadge(flexStatus)}</td>
+          <td>${getProp(p, "Over-Ratio #")}</td>
+          <td>${getStatusBadge(woFlexStatus)}</td>
+          <td>${getProp(p, "Over-Ratio #2")}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Render Trainers Overview Table
+    // Modified to sort based on Project Order and Perm status first then Flex
+    function renderTrainersTable(trainers, baseProjects) {
+      const tbody = document.getElementById('trainersTbody');
+      tbody.innerHTML = '';
+
+      // Build a map of project order index based on rawData.projects array
+      const projectOrderMap = new Map();
+      baseProjects.forEach((p, index) => {
+        projectOrderMap.set(getProp(p, "Project").trim(), index);
+      });
+
+      // Sort trainers: Primary key -> Project Index, Secondary key -> Perm before Flex
+      const sortedTrainers = [...trainers].sort((a, b) => {
+        const projA = getProp(a, "Project").trim();
+        const projB = getProp(b, "Project").trim();
+
+        const orderA = projectOrderMap.has(projA) ? projectOrderMap.get(projA) : 9999;
+        const orderB = projectOrderMap.has(projB) ? projectOrderMap.get(projB) : 9999;
+
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+
+        // Secondary Sort: Perm first, then Flex
+        const statusA = getProp(a, "Status").trim();
+        const statusB = getProp(b, "Status").trim();
+
+        if (statusA === "Perm" && statusB !== "Perm") return -1;
+        if (statusA !== "Perm" && statusB === "Perm") return 1;
+
+        return 0;
+      });
+
+      sortedTrainers.forEach(t => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${getProp(t, "Ident")}</td>
+          <td><strong>${getProp(t, "Trainer Name")}</strong></td>
+          <td>${getProp(t, "Status")}</td>
+          <td>${getProp(t, "Project")}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Helper to generate status badge styling
+    function getStatusBadge(status) {
+      if (!status) return '';
+      if (status === 'Over-Ratio') return `<span class="badge badge-over">${status}</span>`;
+      if (status === 'Under-Ratio') return `<span class="badge badge-under">${status}</span>`;
+      if (status === 'Balanced') return `<span class="badge badge-balanced">${status}</span>`;
+      return status;
+    }
+  </script>
+</body>
+</html>
